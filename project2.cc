@@ -267,19 +267,19 @@ void printFirstSets(unordered_map<string, deque<string>> first_sets)
 
     unordered_set<string> nonterms_goto_epsilon = ListOfNonterminalsThatGoToEpsilon();
 
-    while (!nonterminals_copy.empty())
+    // add epsilons to first set and order it the way bazzi wants it to be, then print
+    for (int i = 0; i < first_sets.size(); i++)
+    {
+        first_sets[nonterminals[i]] = sortListOfTerminals(first_sets[nonterminals[i]]);
+    }
+
+     while (!nonterminals_copy.empty())
     {
         if (nonterms_goto_epsilon.count(nonterminals_copy.front()) == 1)
         {
             first_sets[nonterminals_copy.front()].push_front("#");
         }
         nonterminals_copy.pop_front();
-    }
-
-    // add epsilons to first set and order it the way bazzi wants it to be, then print
-    for (int i = 0; i < first_sets.size(); i++)
-    {
-        first_sets[nonterminals[i]] = sortListOfTerminals(first_sets[nonterminals[i]]);
     }
 
     // printing starts here
@@ -460,7 +460,6 @@ deque<string> allTerminalsInOrder()
 
         iterator = iterator->next;
     }
-    terminals.push_front("#");
 
     return terminals;
 }
@@ -470,6 +469,7 @@ deque<string> sortListOfTerminals(deque<string> terminals)
 
     deque<string> sorted_terminals;
     deque<string> all_terms_ordered = allTerminalsInOrder();
+
 
     for (int i = 0; i < all_terms_ordered.size(); i++)
     {
@@ -481,6 +481,17 @@ deque<string> sortListOfTerminals(deque<string> terminals)
             {
                 sorted_terminals.push_back(terminals[j]);
             }
+        }
+    }
+
+    for(int k = 0; k < terminals.size(); k++){
+        if(terminals[k] == "$"){
+            sorted_terminals.push_front("$");
+            break;
+        }
+        else if(terminals[k] == "#"){
+            sorted_terminals.push_front("#");
+            break;
         }
     }
     return sorted_terminals;
@@ -591,6 +602,11 @@ void printFollowSets(unordered_map<string, deque<string>> all_follow_set)
 
     deque<string> nonterminals = findOrdered_TerminalsAndNonTerminals().second;
 
+    for (int i = 0; i < all_follow_set.size(); i++)
+    {
+        all_follow_set[nonterminals[i]] = sortListOfTerminals(all_follow_set[nonterminals[i]]);
+    }
+
     for (int k = 0; k < nonterminals.size(); k++)
     {
         // cout << "got to printing, just doesn't exist" << endl;
@@ -679,8 +695,10 @@ unordered_map<string, deque<string>> CalculateFollowSets()
         int i = iterator->rhs.size() - 1;
         while (i >= 0 && isNonterminal(iterator->rhs[i]))
         {
-            union_with_follow_sets[iterator->rhs[i]].insert(iterator->lhs);
-            incomplete_follow_set_nonterms.insert(iterator->rhs[i]);
+            if(iterator->lhs != iterator->rhs[i]){
+                union_with_follow_sets[iterator->rhs[i]].insert(iterator->lhs);
+                incomplete_follow_set_nonterms.insert(iterator->rhs[i]);
+            }
             if (nonterms_goto_epsilon.count(iterator->rhs[i]) == 0)
             {
                 break;
@@ -698,35 +716,44 @@ unordered_map<string, deque<string>> CalculateFollowSets()
     for(auto it=incomplete_follow_set_nonterms.begin(); it != incomplete_follow_set_nonterms.end(); it++){
         complete_follow_set_nonterms.erase(*it);
     }
-    for(auto it=incomplete_follow_set_nonterms.begin(); it != incomplete_follow_set_nonterms.end(); it++){
+    /*for(auto it=incomplete_follow_set_nonterms.begin(); it != incomplete_follow_set_nonterms.end(); it++){
         cout << *it << " ";
-    }
-/*
-    for(auto it=incomplete_follow_set_nonterms.begin(); it != incomplete_follow_set_nonterms.end(); it++){
+    }*/
 
-        for(auto union_iter = union_with_follow_sets[*it].begin(); union_iter != union_with_follow_sets[*it].end(); union_iter++){
+    for(auto it=incomplete_follow_set_nonterms.begin(); it != incomplete_follow_set_nonterms.end(); it++){ //for each unfinished follow set
 
+        cout << "incomplete follow set for rule " << *it << " needs to union with the follow sets of: ";
+        for(auto union_iter = union_with_follow_sets[*it].begin(); union_iter != union_with_follow_sets[*it].end(); ){ //for each follow set it is supposed to union with
+
+            cout << *union_iter << " ";
             if(complete_follow_set_nonterms.count(*union_iter) == 1){
 
-                for(int h = 0; h < follow_set[*union_iter].size(); h++){
+                cout << *union_iter << " ";
+
+                for(size_t h = 0; h < follow_set[*union_iter].size(); h++){
 
                     if(follow_set_inserted[*it].insert(follow_set[*union_iter][h]).second){
+                        
                         follow_set[*it].push_back(follow_set[*union_iter][h]);
                     }
                 }
 
-                union_with_follow_sets[*it].erase(*union_iter);
-
+                union_iter = union_with_follow_sets[*it].erase(union_iter);
+            }
+            else{
+                ++union_iter;
             }
         }
-
+        cout << endl;
         if(union_with_follow_sets[*it].size() == 0){
             complete_follow_set_nonterms.insert(*it);
             union_with_follow_sets.erase(*it);
         }
-    }*/
+    }
 
-    // resolve cycles
+    // resolve cycles by 
+
+
 
     return follow_set;
 
@@ -775,7 +802,6 @@ int main(int argc, char *argv[])
         break;
 
     case 4:
-        cout << "starts?";
         printFollowSets(CalculateFollowSets());
         break;
 
