@@ -263,6 +263,18 @@ void RemoveUselessSymbols()
 void printFirstSets(unordered_map<string, deque<string>> first_sets)
 {
     deque<string> nonterminals = findOrdered_TerminalsAndNonTerminals().second;
+    deque<string> nonterminals_copy = nonterminals;
+
+    unordered_set<string> nonterms_goto_epsilon = ListOfNonterminalsThatGoToEpsilon();
+
+    while (!nonterminals_copy.empty())
+    {
+        if (nonterms_goto_epsilon.count(nonterminals_copy.front()) == 1)
+        {
+            first_sets[nonterminals_copy.front()].push_front("#");
+        }
+        nonterminals_copy.pop_front();
+    }
 
     // add epsilons to first set and order it the way bazzi wants it to be, then print
     for (int i = 0; i < first_sets.size(); i++)
@@ -325,17 +337,12 @@ unordered_map<string, deque<string>> CalculateFirstSets() // gonna fix order at 
 
     unordered_set<string> nonterms_goto_epsilon = ListOfNonterminalsThatGoToEpsilon();
 
-
     while (!rules.empty()) // can skip over the eles that already have entries in the map
     {
         string curr_rule = rules.front();
         update_first_sets.push_back(curr_rule);
         update_first_sets_inserted.insert(curr_rule);
         rules.pop_front();
-
-        if(nonterms_goto_epsilon.count(curr_rule) == 1){
-            first_sets[curr_rule].push_front("#");
-        }
 
         while (!update_first_sets.empty())
         {
@@ -521,7 +528,7 @@ unordered_set<string> ListOfNonterminalsThatGoToEpsilon()
 
     bool updated_queue = true;
 
-    unordered_set<string> nonterms_have_epsilon =  ListOfNonterminalsThatGoToEpsilonDirectly();
+    unordered_set<string> nonterms_have_epsilon = ListOfNonterminalsThatGoToEpsilonDirectly();
 
     while (updated_queue)
     {
@@ -559,12 +566,12 @@ unordered_set<string> ListOfNonterminalsThatGoToEpsilon()
         }
     }
 
-     /*cout << "final queue: ";
-        for (auto p = nonterms_have_epsilon.begin(); p != nonterms_have_epsilon.end(); p++)
-        {
-            cout << *p << " ";
-        }
-        cout << endl;*/
+    /*cout << "final queue: ";
+       for (auto p = nonterms_have_epsilon.begin(); p != nonterms_have_epsilon.end(); p++)
+       {
+           cout << *p << " ";
+       }
+       cout << endl;*/
     return nonterms_have_epsilon;
 }
 
@@ -579,9 +586,151 @@ bool isNonterminal(string element)
 }
 
 // Task 4
-void CalculateFollowSets()
+void printFollowSets(unordered_map<string, deque<string>> all_follow_set)
 {
-    cout << "4\n";
+
+    deque<string> nonterminals = findOrdered_TerminalsAndNonTerminals().second;
+
+    for (int k = 0; k < nonterminals.size(); k++)
+    {
+        // cout << "got to printing, just doesn't exist" << endl;
+        deque<string> follow_set = all_follow_set[nonterminals[k]];
+        cout << "FOLLOW(" << nonterminals[k] << ") = { ";
+        // cout << first_set.size();
+        for (int i = 0; i < follow_set.size(); i++)
+        {
+            if (follow_set.size() == 1)
+            {
+                cout << " " << follow_set[follow_set.size() - 1];
+            }
+            else if (i == follow_set.size() - 1)
+            {
+                cout << follow_set[follow_set.size() - 1];
+            }
+            else
+            {
+                cout << follow_set[i] << ", ";
+            }
+        }
+        cout << " }" << endl;
+    }
+}
+
+unordered_map<string, deque<string>> CalculateFollowSets()
+{
+    // initiailize follow sets
+    unordered_map<string, deque<string>> follow_set;
+    unordered_map<string, unordered_set<string>> follow_set_inserted;
+    // cout << "here -4? ";
+
+    unordered_map<string, deque<string>> first_sets = CalculateFirstSets();
+
+    // cout << "here -3? ";
+
+    unordered_map<string, unordered_set<string>> union_with_follow_sets; // nonterms at the end of a rule that union with the rule's follow set
+
+    unordered_set<string> incomplete_follow_set_nonterms;
+
+    unordered_set<string> nonterms_goto_epsilon = ListOfNonterminalsThatGoToEpsilon();
+
+    // cout << "here -2? ";
+
+    if (follow_set_inserted[head->lhs].insert("$").second)
+    {
+        follow_set[head->lhs].push_back("$");
+    }
+    // cout << "here -1? ";
+    struct rule *iterator = head;
+    while (iterator != NULL)
+    {
+        // cout << "here 0? ";
+        if (iterator->rhs.size() > 0)
+        {
+            for (size_t i = 0; i < iterator->rhs.size() - 1; i++)
+            {
+                // cout << "here 1? ";
+                if (isNonterminal(iterator->rhs[i]))
+                {
+                    // cout << "here 2? ";
+                    if (isNonterminal(iterator->rhs[i + 1]))
+                    {
+                        // cout << "here 3? ";
+                        for (int j = 0; j < first_sets[iterator->rhs[i + 1]].size(); j++)
+                        {
+                            if (follow_set_inserted[iterator->rhs[i]].insert(first_sets[iterator->rhs[i + 1]][j]).second)
+                            {
+                                follow_set[iterator->rhs[i]].push_back(first_sets[iterator->rhs[i + 1]][j]);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // cout << "here 4? ";
+                        if (follow_set_inserted[iterator->rhs[i]].insert(iterator->rhs[i + 1]).second)
+                        {
+                            follow_set[iterator->rhs[i]].push_back(iterator->rhs[i + 1]);
+                        }
+                    }
+                }
+            }
+            // cout << "here 5? ";
+        }
+
+        int i = iterator->rhs.size() - 1;
+        while (i >= 0 && isNonterminal(iterator->rhs[i]))
+        {
+            union_with_follow_sets[iterator->rhs[i]].insert(iterator->lhs);
+            incomplete_follow_set_nonterms.insert(iterator->rhs[i]);
+            if (nonterms_goto_epsilon.count(iterator->rhs[i]) == 0)
+            {
+                break;
+            }
+            i--;
+        }
+
+        iterator = iterator->next;
+    }
+
+    // resolve completed follow sets
+
+    unordered_set<string> complete_follow_set_nonterms = findUnorderedNonterminals();
+    // find t
+    for(auto it=incomplete_follow_set_nonterms.begin(); it != incomplete_follow_set_nonterms.end(); it++){
+        complete_follow_set_nonterms.erase(*it);
+    }
+    for(auto it=incomplete_follow_set_nonterms.begin(); it != incomplete_follow_set_nonterms.end(); it++){
+        cout << *it << " ";
+    }
+/*
+    for(auto it=incomplete_follow_set_nonterms.begin(); it != incomplete_follow_set_nonterms.end(); it++){
+
+        for(auto union_iter = union_with_follow_sets[*it].begin(); union_iter != union_with_follow_sets[*it].end(); union_iter++){
+
+            if(complete_follow_set_nonterms.count(*union_iter) == 1){
+
+                for(int h = 0; h < follow_set[*union_iter].size(); h++){
+
+                    if(follow_set_inserted[*it].insert(follow_set[*union_iter][h]).second){
+                        follow_set[*it].push_back(follow_set[*union_iter][h]);
+                    }
+                }
+
+                union_with_follow_sets[*it].erase(*union_iter);
+
+            }
+        }
+
+        if(union_with_follow_sets[*it].size() == 0){
+            complete_follow_set_nonterms.insert(*it);
+            union_with_follow_sets.erase(*it);
+        }
+    }*/
+
+    // resolve cycles
+
+    return follow_set;
+
+    // add dollars to S and the symbols that immediately come after S
 }
 
 // Task 5
@@ -626,7 +775,8 @@ int main(int argc, char *argv[])
         break;
 
     case 4:
-        CalculateFollowSets();
+        cout << "starts?";
+        printFollowSets(CalculateFollowSets());
         break;
 
     case 5:
