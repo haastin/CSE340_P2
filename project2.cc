@@ -35,9 +35,12 @@ bool validIDList(LexicalAnalyzer *);
 unordered_set<string> findUnorderedNonterminals();
 pair<deque<string>, deque<string>> findOrdered_TerminalsAndNonTerminals();
 bool isNonterminal(string);
-bool goesToEpsilon(string);
+bool goesToEpsilonDirectly(string);
 unordered_map<string, deque<string>> CalculateFirstSets();
 void printFirstSets(unordered_map<string, deque<string>>);
+deque<string> sortListOfTerminals(deque<string>);
+deque<string> allTerminalsInOrder();
+unordered_set<string> ListOfNonterminalsThatGoToEpsilon();
 // recursive procedures to check if the grammar for an input grammar is being followed
 
 // read grammar
@@ -258,23 +261,37 @@ void RemoveUselessSymbols()
 
 void printFirstSets(unordered_map<string, deque<string>> first_sets)
 {
-
-    //add epsilons to first set and order it the way bazzi wants it to be, then print
-
-
-    //printing starts here
     deque<string> nonterminals = findOrdered_TerminalsAndNonTerminals().second;
+
+    // add epsilons to first set and order it the way bazzi wants it to be, then print
+    for (int i = 0; i < first_sets.size(); i++)
+    {
+        first_sets[nonterminals[i]] = sortListOfTerminals(first_sets[nonterminals[i]]);
+    }
+
+    // printing starts here
 
     for (int k = 0; k < nonterminals.size(); k++)
     {
         deque<string> first_set = first_sets[nonterminals[k]];
-        cout << nonterminals[k] << ": ";
+        cout << "FIRST(" << nonterminals[k] << ") = { ";
         // cout << first_set.size();
         for (int i = 0; i < first_set.size(); i++)
         {
-            cout << first_set[i] << " ";
+            if (first_set.size() == 1)
+            {
+                cout << " " << first_set[first_set.size() - 1];
+            }
+            else if (i == first_set.size() - 1)
+            {
+                cout << first_set[first_set.size() - 1];
+            }
+            else
+            {
+                cout << first_set[i] << ", ";
+            }
         }
-        cout << endl;
+        cout << " }" << endl;
     }
     // cout << "this: " << first_sets[nonterminals[1]].front() << endl;
 }
@@ -289,12 +306,12 @@ unordered_map<string, deque<string>> CalculateFirstSets() // gonna fix order at 
 
     unordered_map<string, deque<string>> first_sets;
     unordered_map<string, unordered_set<string>> first_sets_inserted;
-    
+
     /*struct rule *iterator = head;
     while(iterator != NULL){
         cout << "testing rule: " << iterator->lhs << endl;
 
-        if(goesToEpsilon(iterator->lhs)){
+        if(goesToEpsilonDirectly(iterator->lhs)){
             cout << iterator->lhs << "goes to epsilon" << endl;
             if(first_sets_inserted[iterator->lhs].insert("#").second){
                 cout << "inserted epsilon for " << iterator->lhs << endl;
@@ -314,19 +331,24 @@ unordered_map<string, deque<string>> CalculateFirstSets() // gonna fix order at 
 
         while (!update_first_sets.empty())
         {
-            cout << "rule: " << curr_rule << " with the queue of its first set eles:";
-            for (int q = 0; q < update_first_sets.size(); q++)
+            // cout << "rule: " << curr_rule << " with the queue of its first set eles:";
+            /*for (int q = 0; q < update_first_sets.size(); q++)
             {
                 cout << update_first_sets[q] << " ";
             }
-            cout << endl;
+            cout << endl;*/
             struct rule *iterator = head;
 
-            if(goesToEpsilon(update_first_sets.front())){
-                if(first_sets_inserted[curr_rule].insert("#").second){
+            // sort update_first_sets to be in order that the nonterms appear in the grammar
+
+            if (goesToEpsilonDirectly(update_first_sets.front()))
+            {
+                if (first_sets_inserted[curr_rule].insert("#").second)
+                {
                     first_sets[curr_rule].push_front("#");
                 }
             }
+
             while (iterator != NULL)
             { // find all terms and nonterms for rule at front of queue
 
@@ -338,7 +360,7 @@ unordered_map<string, deque<string>> CalculateFirstSets() // gonna fix order at 
                     }
                     else
                     {
-                        cout << "found a rule that matches first node in our queue: " << iterator->lhs << endl;
+                        // cout << "found a rule that matches first node in our queue: " << iterator->lhs << endl;
                         if (!isNonterminal(iterator->rhs[0]))
                         {                                                                       // if its first element is a terminal
                             if (first_sets_inserted[curr_rule].insert(iterator->rhs[0]).second) // check if we've already added it
@@ -347,7 +369,7 @@ unordered_map<string, deque<string>> CalculateFirstSets() // gonna fix order at 
                         else
                         { // else if its a nonterminal, we need to check if we can go past it
 
-                            if (goesToEpsilon(iterator->rhs[0]))
+                            if (goesToEpsilonDirectly(iterator->rhs[0]))
                             {
                                 if (update_first_sets_inserted.insert(iterator->rhs[0]).second)
                                 {
@@ -358,7 +380,7 @@ unordered_map<string, deque<string>> CalculateFirstSets() // gonna fix order at 
                                 {
                                     if (isNonterminal(iterator->rhs[i]))
                                     {
-                                        if (goesToEpsilon(iterator->rhs[i]))
+                                        if (goesToEpsilonDirectly(iterator->rhs[i]))
                                         {
                                             if (update_first_sets_inserted.insert(iterator->rhs[i]).second)
                                             {
@@ -408,9 +430,57 @@ unordered_map<string, deque<string>> CalculateFirstSets() // gonna fix order at 
     return first_sets;
 }
 
-bool goesToEpsilon(string rule)
+deque<string> allTerminalsInOrder()
 {
 
+    deque<string> terminals;
+    unordered_set<string> terminals_inserted;
+    struct rule *iterator = head;
+    while (iterator != NULL)
+    {
+
+        for (int i = 0; i < iterator->rhs.size(); i++)
+        {
+
+            if (!isNonterminal(iterator->rhs[i]))
+            {
+                if (terminals_inserted.insert(iterator->rhs[i]).second)
+                {
+                    terminals.push_back(iterator->rhs[i]);
+                }
+            }
+        }
+
+        iterator = iterator->next;
+    }
+    terminals.push_front("#");
+
+    return terminals;
+}
+
+deque<string> sortListOfTerminals(deque<string> terminals)
+{
+
+    deque<string> sorted_terminals;
+    deque<string> all_terms_ordered = allTerminalsInOrder();
+
+    for (int i = 0; i < all_terms_ordered.size(); i++)
+    {
+
+        string curr_first = all_terms_ordered.front();
+        for (int j = 0; j < terminals.size(); j++)
+        {
+            if (terminals[j] == all_terms_ordered[i])
+            {
+                sorted_terminals.push_back(terminals[j]);
+            }
+        }
+    }
+    return sorted_terminals;
+}
+
+bool goesToEpsilonDirectly(string rule)
+{
     struct rule *iterator = head;
     while (iterator != NULL)
     {
@@ -425,6 +495,83 @@ bool goesToEpsilon(string rule)
         iterator = iterator->next;
     }
     return false;
+}
+
+deque<string> ListOfNonterminalsThatGoToEpsilonDirectly()
+{
+
+    deque<string> nonterminals_direct;
+
+    deque<string> nonterminals_list = findOrdered_TerminalsAndNonTerminals().second;
+
+    for (int i = 0; i < nonterminals_list.size(); i++)
+    {
+
+        if (goesToEpsilonDirectly(nonterminals_list[i]))
+        {
+            nonterminals_direct.push_back(nonterminals_list[i]);
+        }
+    }
+
+    return nonterminals_direct;
+}
+
+unordered_set<string> ListOfNonterminalsThatGoToEpsilon()
+{
+
+    bool updated_queue = true;
+
+    deque<string> holder =  ListOfNonterminalsThatGoToEpsilonDirectly();
+
+    unordered_set<string> nonterms_have_epsilon;
+
+    for(int i = 0; i < holder.size(); i++){
+        nonterms_have_epsilon.insert(holder[i]);
+    }
+
+    while (updated_queue)
+    {
+        cout << "current queue: ";
+        for (auto p = nonterms_have_epsilon.begin(); p != nonterms_have_epsilon.end(); p++)
+        {
+            cout << *p << " ";
+        }
+        cout << endl;
+
+        updated_queue = false;
+
+        struct rule *iterator = head;
+        while (iterator != NULL)
+        {
+            bool allGoEpsilon = true;
+
+            for (int i = 0; i < iterator->rhs.size(); i++) // if everything on the rhs is in the queue
+            {
+                if (nonterms_have_epsilon.count(iterator->rhs[i]) == 0)
+                {
+                    allGoEpsilon = false;
+                    break;
+                }
+            }
+            if (allGoEpsilon)
+            {
+                if (nonterms_have_epsilon.insert(iterator->lhs).second)
+                {
+                    updated_queue = true;
+                }
+            }
+
+            iterator = iterator->next;
+        }
+    }
+
+     cout << "final queue: ";
+        for (auto p = nonterms_have_epsilon.begin(); p != nonterms_have_epsilon.end(); p++)
+        {
+            cout << *p << " ";
+        }
+        cout << endl;
+    return nonterms_have_epsilon;
 }
 
 bool isNonterminal(string element)
@@ -481,7 +628,8 @@ int main(int argc, char *argv[])
         break;
 
     case 3:
-        printFirstSets(CalculateFirstSets());
+        goesToEpsilonlyWithSuccessiveNonterminalsThatAllGoDirectlyToEpsilon("hi");
+        // printFirstSets(CalculateFirstSets());
         break;
 
     case 4:
