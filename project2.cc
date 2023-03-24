@@ -273,7 +273,7 @@ void printFirstSets(unordered_map<string, deque<string>> first_sets)
         first_sets[nonterminals[i]] = sortListOfTerminals(first_sets[nonterminals[i]]);
     }
 
-     while (!nonterminals_copy.empty())
+    while (!nonterminals_copy.empty())
     {
         if (nonterms_goto_epsilon.count(nonterminals_copy.front()) == 1)
         {
@@ -470,7 +470,6 @@ deque<string> sortListOfTerminals(deque<string> terminals)
     deque<string> sorted_terminals;
     deque<string> all_terms_ordered = allTerminalsInOrder();
 
-
     for (int i = 0; i < all_terms_ordered.size(); i++)
     {
 
@@ -484,12 +483,15 @@ deque<string> sortListOfTerminals(deque<string> terminals)
         }
     }
 
-    for(int k = 0; k < terminals.size(); k++){
-        if(terminals[k] == "$"){
+    for (int k = 0; k < terminals.size(); k++)
+    {
+        if (terminals[k] == "$")
+        {
             sorted_terminals.push_front("$");
             break;
         }
-        else if(terminals[k] == "#"){
+        else if (terminals[k] == "#")
+        {
             sorted_terminals.push_front("#");
             break;
         }
@@ -670,40 +672,66 @@ unordered_map<string, deque<string>> CalculateFollowSets()
                     // cout << "here 2? ";
                     if (isNonterminal(iterator->rhs[i + 1]))
                     {
-                        // cout << "here 3? ";
-                        for (int j = 0; j < first_sets[iterator->rhs[i + 1]].size(); j++)
+                        int x = i + 1;
+                        bool addNext = true;
+                        while (addNext) //if the nonterm next to rhs[i] goes to epsilon, the nonterms/terms after it also follow rhs[i]
                         {
-                            if (follow_set_inserted[iterator->rhs[i]].insert(first_sets[iterator->rhs[i + 1]][j]).second)
+                            if (isNonterminal(iterator->rhs[x]))
                             {
-                                follow_set[iterator->rhs[i]].push_back(first_sets[iterator->rhs[i + 1]][j]);
+                                //cout << "into " << iterator->rhs[i] << " insert: ";
+                                for (int j = 0; j < first_sets[iterator->rhs[i + 1]].size(); j++)
+                                {
+                                    if (follow_set_inserted[iterator->rhs[i]].insert(first_sets[iterator->rhs[i + 1]][j]).second)
+                                    {
+                                        //cout << first_sets[iterator->rhs[i + 1]][j] << " ";
+                                        follow_set[iterator->rhs[i]].push_back(first_sets[iterator->rhs[i + 1]][j]);
+                                    }
+                                }
+                                //cout << endl;
+                                addNext = (nonterms_goto_epsilon.count(iterator->rhs[x]) == 1);
+                                x++;
+                            }
+                            else
+                            {
+                                if (follow_set_inserted[iterator->rhs[i]].insert(iterator->rhs[x]).second)
+                                {
+                                    //cout << iterator->rhs[x] << " ";
+                                    follow_set[iterator->rhs[i]].push_back(iterator->rhs[x]);
+                                }
+                                addNext = false;
                             }
                         }
                     }
                     else
                     {
-                        // cout << "here 4? ";
+
                         if (follow_set_inserted[iterator->rhs[i]].insert(iterator->rhs[i + 1]).second)
                         {
+                            //cout << "into " << iterator->rhs[i] << "insert: " << iterator->rhs[i + 1];
                             follow_set[iterator->rhs[i]].push_back(iterator->rhs[i + 1]);
                         }
+                        //cout << endl;
                     }
                 }
             }
-            // cout << "here 5? ";
+            cout << endl;
         }
-
-        int i = iterator->rhs.size() - 1;
-        while (i >= 0 && isNonterminal(iterator->rhs[i]))
+        if (iterator->rhs.size() > 0)
         {
-            if(iterator->lhs != iterator->rhs[i]){
-                union_with_follow_sets[iterator->rhs[i]].insert(iterator->lhs);
-                incomplete_follow_set_nonterms.insert(iterator->rhs[i]);
-            }
-            if (nonterms_goto_epsilon.count(iterator->rhs[i]) == 0)
+            int i = iterator->rhs.size() - 1;
+            while (i >= 0 && isNonterminal(iterator->rhs[i]))
             {
-                break;
+                if (iterator->lhs != iterator->rhs[i])
+                {
+                    union_with_follow_sets[iterator->rhs[i]].insert(iterator->lhs);
+                    incomplete_follow_set_nonterms.insert(iterator->rhs[i]);
+                }
+                if (nonterms_goto_epsilon.count(iterator->rhs[i]) == 0)
+                {
+                    break;
+                }
+                i--;
             }
-            i--;
         }
 
         iterator = iterator->next;
@@ -713,47 +741,93 @@ unordered_map<string, deque<string>> CalculateFollowSets()
 
     unordered_set<string> complete_follow_set_nonterms = findUnorderedNonterminals();
     // find t
-    for(auto it=incomplete_follow_set_nonterms.begin(); it != incomplete_follow_set_nonterms.end(); it++){
+    for (auto it = incomplete_follow_set_nonterms.begin(); it != incomplete_follow_set_nonterms.end(); it++)
+    {
         complete_follow_set_nonterms.erase(*it);
     }
-    /*for(auto it=incomplete_follow_set_nonterms.begin(); it != incomplete_follow_set_nonterms.end(); it++){
-        cout << *it << " ";
-    }*/
 
-    for(auto it=incomplete_follow_set_nonterms.begin(); it != incomplete_follow_set_nonterms.end(); it++){ //for each unfinished follow set
+    bool some_nonterms_updated = true;
+    while(some_nonterms_updated)
+    some_nonterms_updated = false;
+    for (auto it = incomplete_follow_set_nonterms.begin(); it != incomplete_follow_set_nonterms.end();)
+    { // for each unfinished follow set
 
         cout << "incomplete follow set for rule " << *it << " needs to union with the follow sets of: ";
-        for(auto union_iter = union_with_follow_sets[*it].begin(); union_iter != union_with_follow_sets[*it].end(); ){ //for each follow set it is supposed to union with
+        for (auto union_iter = union_with_follow_sets[*it].begin(); union_iter != union_with_follow_sets[*it].end();)
+        { // for each follow set it is supposed to union with
 
-            cout << *union_iter << " ";
-            if(complete_follow_set_nonterms.count(*union_iter) == 1){
+            // cout << *union_iter << " ";
+            if (complete_follow_set_nonterms.count(*union_iter) == 1)
+            {
 
-                cout << *union_iter << " ";
+                cout << "union with first(" << *union_iter << "): ";
 
-                for(size_t h = 0; h < follow_set[*union_iter].size(); h++){
+                for (size_t h = 0; h < follow_set[*union_iter].size(); h++)
+                {
+                    cout << follow_set[*union_iter][h] << " ";
 
-                    if(follow_set_inserted[*it].insert(follow_set[*union_iter][h]).second){
-                        
+                    if (follow_set_inserted[*it].insert(follow_set[*union_iter][h]).second)
+                    {
+
                         follow_set[*it].push_back(follow_set[*union_iter][h]);
                     }
                 }
 
                 union_iter = union_with_follow_sets[*it].erase(union_iter);
             }
-            else{
+            else
+            {
                 ++union_iter;
             }
         }
         cout << endl;
-        if(union_with_follow_sets[*it].size() == 0){
+        if (union_with_follow_sets[*it].size() == 0)
+        {
             complete_follow_set_nonterms.insert(*it);
-            union_with_follow_sets.erase(*it);
+            it = incomplete_follow_set_nonterms.erase(it);
+            some_nonterms_updated = true; //any time a rule's dependencies are resolved, we need to check to see if any other unresolved rules depend on the now-resolved rule
+        }
+        else
+        {
+            it++;
         }
     }
+    // cout << endl
+    //cout << "new rules!" << endl;
+    for (auto it = incomplete_follow_set_nonterms.begin(); it != incomplete_follow_set_nonterms.end(); it++)
+    { // for each unfinished follow set
 
-    // resolve cycles by 
+        cout << "incomplete follow set for rule " << *it << " needs to union with the follow sets of: ";
+        if (union_with_follow_sets[*it].size() > 0)
+        {
+            for (auto union_iter = union_with_follow_sets[*it].begin(); union_iter != union_with_follow_sets[*it].end(); union_iter++)
+            { // for each follow set it is supposed to union with
 
+                cout << *union_iter << " ";
+            }
+        }
+        else
+        {
+            cout << "no entry anymore for rule " << *it;
+        }
+        cout << endl;
+    }
 
+    // resolve cycles by
+    /* while(incomplete_follow_set_nonterms.size() != 0){
+
+     }*/
+
+    for (auto it = incomplete_follow_set_nonterms.begin(); it != incomplete_follow_set_nonterms.end(); it++)
+    { // for each unfinished follow set
+
+        if (union_with_follow_sets[*it].size() > 0)
+        {
+            for (auto union_iter = union_with_follow_sets[*it].begin(); union_iter != union_with_follow_sets[*it].end(); union_iter++)
+            { // for each follow set it is supposed to union with
+            }
+        }
+    }
 
     return follow_set;
 
