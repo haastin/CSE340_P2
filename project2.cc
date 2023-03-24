@@ -40,6 +40,7 @@ unordered_map<string, deque<string>> CalculateFirstSets();
 void printFirstSets(unordered_map<string, deque<string>>);
 deque<string> sortListOfTerminals(deque<string>);
 deque<string> allTerminalsInOrder();
+unordered_set<string> ListOfNonterminalsThatGoToEpsilonDirectly();
 unordered_set<string> ListOfNonterminalsThatGoToEpsilon();
 // recursive procedures to check if the grammar for an input grammar is being followed
 
@@ -322,12 +323,19 @@ unordered_map<string, deque<string>> CalculateFirstSets() // gonna fix order at 
         iterator = iterator->next;
     }*/
 
+    unordered_set<string> nonterms_goto_epsilon = ListOfNonterminalsThatGoToEpsilon();
+
+
     while (!rules.empty()) // can skip over the eles that already have entries in the map
     {
         string curr_rule = rules.front();
         update_first_sets.push_back(curr_rule);
         update_first_sets_inserted.insert(curr_rule);
         rules.pop_front();
+
+        if(nonterms_goto_epsilon.count(curr_rule) == 1){
+            first_sets[curr_rule].push_front("#");
+        }
 
         while (!update_first_sets.empty())
         {
@@ -340,14 +348,6 @@ unordered_map<string, deque<string>> CalculateFirstSets() // gonna fix order at 
             struct rule *iterator = head;
 
             // sort update_first_sets to be in order that the nonterms appear in the grammar
-
-            if (goesToEpsilonDirectly(update_first_sets.front()))
-            {
-                if (first_sets_inserted[curr_rule].insert("#").second)
-                {
-                    first_sets[curr_rule].push_front("#");
-                }
-            }
 
             while (iterator != NULL)
             { // find all terms and nonterms for rule at front of queue
@@ -369,7 +369,7 @@ unordered_map<string, deque<string>> CalculateFirstSets() // gonna fix order at 
                         else
                         { // else if its a nonterminal, we need to check if we can go past it
 
-                            if (goesToEpsilonDirectly(iterator->rhs[0]))
+                            if (nonterms_goto_epsilon.count(iterator->rhs[0]) == 1)
                             {
                                 if (update_first_sets_inserted.insert(iterator->rhs[0]).second)
                                 {
@@ -380,7 +380,7 @@ unordered_map<string, deque<string>> CalculateFirstSets() // gonna fix order at 
                                 {
                                     if (isNonterminal(iterator->rhs[i]))
                                     {
-                                        if (goesToEpsilonDirectly(iterator->rhs[i]))
+                                        if (nonterms_goto_epsilon.count(iterator->rhs[i]) == 1)
                                         {
                                             if (update_first_sets_inserted.insert(iterator->rhs[i]).second)
                                             {
@@ -497,19 +497,19 @@ bool goesToEpsilonDirectly(string rule)
     return false;
 }
 
-deque<string> ListOfNonterminalsThatGoToEpsilonDirectly()
+unordered_set<string> ListOfNonterminalsThatGoToEpsilonDirectly()
 {
 
-    deque<string> nonterminals_direct;
+    unordered_set<string> nonterminals_direct;
 
-    deque<string> nonterminals_list = findOrdered_TerminalsAndNonTerminals().second;
+    unordered_set<string> nonterminals_list = findUnorderedNonterminals();
 
-    for (int i = 0; i < nonterminals_list.size(); i++)
+    for (auto i = nonterminals_list.begin(); i != nonterminals_list.end(); i++)
     {
 
-        if (goesToEpsilonDirectly(nonterminals_list[i]))
+        if (goesToEpsilonDirectly(*i))
         {
-            nonterminals_direct.push_back(nonterminals_list[i]);
+            nonterminals_direct.insert(*i);
         }
     }
 
@@ -521,22 +521,16 @@ unordered_set<string> ListOfNonterminalsThatGoToEpsilon()
 
     bool updated_queue = true;
 
-    deque<string> holder =  ListOfNonterminalsThatGoToEpsilonDirectly();
-
-    unordered_set<string> nonterms_have_epsilon;
-
-    for(int i = 0; i < holder.size(); i++){
-        nonterms_have_epsilon.insert(holder[i]);
-    }
+    unordered_set<string> nonterms_have_epsilon =  ListOfNonterminalsThatGoToEpsilonDirectly();
 
     while (updated_queue)
     {
-        cout << "current queue: ";
+        /*cout << "current queue: ";
         for (auto p = nonterms_have_epsilon.begin(); p != nonterms_have_epsilon.end(); p++)
         {
             cout << *p << " ";
         }
-        cout << endl;
+        cout << endl;*/
 
         updated_queue = false;
 
@@ -565,12 +559,12 @@ unordered_set<string> ListOfNonterminalsThatGoToEpsilon()
         }
     }
 
-     cout << "final queue: ";
+     /*cout << "final queue: ";
         for (auto p = nonterms_have_epsilon.begin(); p != nonterms_have_epsilon.end(); p++)
         {
             cout << *p << " ";
         }
-        cout << endl;
+        cout << endl;*/
     return nonterms_have_epsilon;
 }
 
@@ -628,8 +622,7 @@ int main(int argc, char *argv[])
         break;
 
     case 3:
-        goesToEpsilonlyWithSuccessiveNonterminalsThatAllGoDirectlyToEpsilon("hi");
-        // printFirstSets(CalculateFirstSets());
+        printFirstSets(CalculateFirstSets());
         break;
 
     case 4:
