@@ -611,17 +611,13 @@ void printFollowSets(unordered_map<string, deque<string>> all_follow_set)
 
     for (int k = 0; k < nonterminals.size(); k++)
     {
-        // cout << "got to printing, just doesn't exist" << endl;
+
         deque<string> follow_set = all_follow_set[nonterminals[k]];
         cout << "FOLLOW(" << nonterminals[k] << ") = { ";
-        // cout << first_set.size();
+
         for (int i = 0; i < follow_set.size(); i++)
         {
-            if (follow_set.size() == 1)
-            {
-                cout << " " << follow_set[follow_set.size() - 1];
-            }
-            else if (i == follow_set.size() - 1)
+            if (i == follow_set.size() - 1)
             {
                 cout << follow_set[follow_set.size() - 1];
             }
@@ -654,10 +650,9 @@ unordered_map<string, deque<string>> CalculateFollowSets()
     }
 
     struct rule *iterator = head;
-    while (iterator != NULL)
+    while (iterator != NULL) // for every rule in the grammar
     {
-
-        if (iterator->rhs.size() > 0)
+        if (iterator->rhs.size() > 0) // if the rhs isn't epsilon
         {
             for (size_t i = 0; i < iterator->rhs.size() - 1; i++)
             {
@@ -665,45 +660,29 @@ unordered_map<string, deque<string>> CalculateFollowSets()
                 if (isNonterminal(iterator->rhs[i]))
                 {
 
-                    if (isNonterminal(iterator->rhs[i + 1]))
+                    int x = i + 1;
+                    while (x < iterator->rhs.size() && isNonterminal(iterator->rhs[x]))
                     {
-                        int x = i + 1;
-                        bool addNext = true;
-                        while (addNext) // if the nonterm next to rhs[i] goes to epsilon, the nonterms/terms after it also follow rhs[i]
+                        for (int j = 0; j < first_sets[iterator->rhs[x]].size(); j++)
                         {
-                            if (isNonterminal(iterator->rhs[x]))
+                            if (follow_set_inserted[iterator->rhs[i]].insert(first_sets[iterator->rhs[x]][j]).second)
                             {
 
-                                for (int j = 0; j < first_sets[iterator->rhs[i + 1]].size(); j++)
-                                {
-                                    if (follow_set_inserted[iterator->rhs[i]].insert(first_sets[iterator->rhs[i + 1]][j]).second)
-                                    {
-
-                                        follow_set[iterator->rhs[i]].push_back(first_sets[iterator->rhs[i + 1]][j]);
-                                    }
-                                }
-
-                                addNext = (nonterms_goto_epsilon.count(iterator->rhs[x]) == 1);
-                                x++;
-                            }
-                            else
-                            {
-                                if (follow_set_inserted[iterator->rhs[i]].insert(iterator->rhs[x]).second)
-                                {
-
-                                    follow_set[iterator->rhs[i]].push_back(iterator->rhs[x]);
-                                }
-                                addNext = false;
+                                follow_set[iterator->rhs[i]].push_back(first_sets[iterator->rhs[x]][j]);
                             }
                         }
+                        
+                        if(nonterms_goto_epsilon.count(iterator->rhs[x]) != 1){
+                            break;
+                        }
+                        x++;
                     }
-                    else
+                    if (x < iterator->rhs.size())
                     {
-
-                        if (follow_set_inserted[iterator->rhs[i]].insert(iterator->rhs[i + 1]).second)
+                        if (follow_set_inserted[iterator->rhs[i]].insert(iterator->rhs[x]).second)
                         {
 
-                            follow_set[iterator->rhs[i]].push_back(iterator->rhs[i + 1]);
+                            follow_set[iterator->rhs[i]].push_back(iterator->rhs[x]);
                         }
                     }
                 }
@@ -726,7 +705,6 @@ unordered_map<string, deque<string>> CalculateFollowSets()
                 i--;
             }
         }
-
         iterator = iterator->next;
     }
 
@@ -765,15 +743,15 @@ unordered_map<string, deque<string>> CalculateFollowSets()
                 y = union_with_nonterms.front();
             }
         }
-        
-       for (auto union_iter = possible_follow_nonterms.begin(); union_iter != possible_follow_nonterms.end(); union_iter++)
+
+        for (auto union_iter = possible_follow_nonterms.begin(); union_iter != possible_follow_nonterms.end(); union_iter++)
         {
             if (follow_set[*union_iter].size() > 0 && *union_iter != *it)
             {
                 for (auto h = follow_set[*union_iter].begin(); h != follow_set[*union_iter].end(); h++)
                 {
-                   
-                   if (follow_set_inserted[*it].insert(*h).second)
+
+                    if (follow_set_inserted[*it].insert(*h).second)
                     {
                         follow_set[*it].push_back(*h);
                     }
