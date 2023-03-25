@@ -674,20 +674,20 @@ unordered_map<string, deque<string>> CalculateFollowSets()
                     {
                         int x = i + 1;
                         bool addNext = true;
-                        while (addNext) //if the nonterm next to rhs[i] goes to epsilon, the nonterms/terms after it also follow rhs[i]
+                        while (addNext) // if the nonterm next to rhs[i] goes to epsilon, the nonterms/terms after it also follow rhs[i]
                         {
                             if (isNonterminal(iterator->rhs[x]))
                             {
-                                //cout << "into " << iterator->rhs[i] << " insert: ";
+                                // cout << "into " << iterator->rhs[i] << " insert: ";
                                 for (int j = 0; j < first_sets[iterator->rhs[i + 1]].size(); j++)
                                 {
                                     if (follow_set_inserted[iterator->rhs[i]].insert(first_sets[iterator->rhs[i + 1]][j]).second)
                                     {
-                                        //cout << first_sets[iterator->rhs[i + 1]][j] << " ";
+                                        // cout << first_sets[iterator->rhs[i + 1]][j] << " ";
                                         follow_set[iterator->rhs[i]].push_back(first_sets[iterator->rhs[i + 1]][j]);
                                     }
                                 }
-                                //cout << endl;
+                                // cout << endl;
                                 addNext = (nonterms_goto_epsilon.count(iterator->rhs[x]) == 1);
                                 x++;
                             }
@@ -695,7 +695,7 @@ unordered_map<string, deque<string>> CalculateFollowSets()
                             {
                                 if (follow_set_inserted[iterator->rhs[i]].insert(iterator->rhs[x]).second)
                                 {
-                                    //cout << iterator->rhs[x] << " ";
+                                    // cout << iterator->rhs[x] << " ";
                                     follow_set[iterator->rhs[i]].push_back(iterator->rhs[x]);
                                 }
                                 addNext = false;
@@ -707,14 +707,14 @@ unordered_map<string, deque<string>> CalculateFollowSets()
 
                         if (follow_set_inserted[iterator->rhs[i]].insert(iterator->rhs[i + 1]).second)
                         {
-                            //cout << "into " << iterator->rhs[i] << "insert: " << iterator->rhs[i + 1];
+                            // cout << "into " << iterator->rhs[i] << "insert: " << iterator->rhs[i + 1];
                             follow_set[iterator->rhs[i]].push_back(iterator->rhs[i + 1]);
                         }
-                        //cout << endl;
+                        // cout << endl;
                     }
                 }
             }
-            cout << endl;
+            //cout << endl;
         }
         if (iterator->rhs.size() > 0)
         {
@@ -747,53 +747,54 @@ unordered_map<string, deque<string>> CalculateFollowSets()
     }
 
     bool some_nonterms_updated = true;
-    while(some_nonterms_updated)
-    some_nonterms_updated = false;
-    for (auto it = incomplete_follow_set_nonterms.begin(); it != incomplete_follow_set_nonterms.end();)
-    { // for each unfinished follow set
+    while (some_nonterms_updated)
+    {
+        some_nonterms_updated = false;
+        for (auto it = incomplete_follow_set_nonterms.begin(); it != incomplete_follow_set_nonterms.end();)
+        { // for each unfinished follow set
 
-        cout << "incomplete follow set for rule " << *it << " needs to union with the follow sets of: ";
-        for (auto union_iter = union_with_follow_sets[*it].begin(); union_iter != union_with_follow_sets[*it].end();)
-        { // for each follow set it is supposed to union with
+            // cout << "incomplete follow set for rule " << *it << " needs to union with the follow sets of: ";
+            for (auto union_iter = union_with_follow_sets[*it].begin(); union_iter != union_with_follow_sets[*it].end();)
+            { // for each follow set it is supposed to union with
 
-            // cout << *union_iter << " ";
-            if (complete_follow_set_nonterms.count(*union_iter) == 1)
-            {
-
-                cout << "union with first(" << *union_iter << "): ";
-
-                for (size_t h = 0; h < follow_set[*union_iter].size(); h++)
+                //cout << *union_iter << " / ";
+                if (complete_follow_set_nonterms.count(*union_iter) == 1)
                 {
-                    cout << follow_set[*union_iter][h] << " ";
 
-                    if (follow_set_inserted[*it].insert(follow_set[*union_iter][h]).second)
+                    // cout << "union with first(" << *union_iter << "): ";
+
+                    for (size_t h = 0; h < follow_set[*union_iter].size(); h++)
                     {
+                        // cout << follow_set[*union_iter][h] << " ";
 
-                        follow_set[*it].push_back(follow_set[*union_iter][h]);
+                        if (follow_set_inserted[*it].insert(follow_set[*union_iter][h]).second)
+                        {
+
+                            follow_set[*it].push_back(follow_set[*union_iter][h]);
+                        }
                     }
-                }
 
-                union_iter = union_with_follow_sets[*it].erase(union_iter);
+                    union_iter = union_with_follow_sets[*it].erase(union_iter);
+                }
+                else
+                {
+                    ++union_iter;
+                }
+            }
+            // cout << endl;
+            if (union_with_follow_sets[*it].size() == 0)
+            {
+                complete_follow_set_nonterms.insert(*it);
+                it = incomplete_follow_set_nonterms.erase(it);
+                some_nonterms_updated = true; // any time a rule's dependencies are resolved, we need to check to see if any other unresolved rules depend on the now-resolved rule
             }
             else
             {
-                ++union_iter;
+                it++;
             }
         }
-        cout << endl;
-        if (union_with_follow_sets[*it].size() == 0)
-        {
-            complete_follow_set_nonterms.insert(*it);
-            it = incomplete_follow_set_nonterms.erase(it);
-            some_nonterms_updated = true; //any time a rule's dependencies are resolved, we need to check to see if any other unresolved rules depend on the now-resolved rule
-        }
-        else
-        {
-            it++;
-        }
     }
-    // cout << endl
-    //cout << "new rules!" << endl;
+   
     for (auto it = incomplete_follow_set_nonterms.begin(); it != incomplete_follow_set_nonterms.end(); it++)
     { // for each unfinished follow set
 
@@ -814,17 +815,135 @@ unordered_map<string, deque<string>> CalculateFollowSets()
     }
 
     // resolve cycles by
-    /* while(incomplete_follow_set_nonterms.size() != 0){
+    some_nonterms_updated = true;
+    while (some_nonterms_updated) // if we resolve a cycle, we want to be able to see if we can resolve anything else
+    {
+        some_nonterms_updated = false;
 
-     }*/
-
-    for (auto it = incomplete_follow_set_nonterms.begin(); it != incomplete_follow_set_nonterms.end(); it++)
-    { // for each unfinished follow set
-
-        if (union_with_follow_sets[*it].size() > 0)
+        for (auto it = incomplete_follow_set_nonterms.begin(); it != incomplete_follow_set_nonterms.end();) // go through each currently incomplete rule
         {
-            for (auto union_iter = union_with_follow_sets[*it].begin(); union_iter != union_with_follow_sets[*it].end(); union_iter++)
-            { // for each follow set it is supposed to union with
+            cout << "for rule " << *it << ":" << endl;
+
+            deque<string> union_with_nonterms; // is a queue to store all the dependencies of the current rule
+
+            /*union_with_follow_sets is what keeps track of the dependencies of our currently incomplete rules*/
+            auto union_iter = union_with_follow_sets[*it].begin();
+
+            while (union_iter != union_with_follow_sets[*it].end()) // for each of this rule's dependencies
+            {
+
+                if (complete_follow_set_nonterms.count(*union_iter) == 1) // if the dependency is complete, union with its now-complete follow_set
+                {
+                    cout << "we just resolved a cycle and now i can resolve this rule: " << *it << endl;
+
+                    for (size_t h = 0; h < follow_set[*union_iter].size(); h++)
+                    {
+
+                        if (follow_set_inserted[*it].insert(follow_set[*union_iter][h]).second)
+                        {
+
+                            follow_set[*it].push_back(follow_set[*union_iter][h]);
+                        }
+                    }
+
+                    union_iter = union_with_follow_sets[*it].erase(union_iter); // and remove the dependency from this rule's list of dependencies
+                }
+                else // if its not complete, add the dependency to our queue
+                {
+                    cout << "added this unresolved rule to my queue: " << *union_iter << endl;
+                    union_with_nonterms.push_back(*union_iter);
+                    ++union_iter;
+                }
+            }
+            /*if our rule has resolved all of its dependencies, which in this case would be because a rule was dependent on another rule(s) who was in a cycle
+            that this rule was not a part of, and those cycles were resolved*/
+            if (union_with_follow_sets[*it].size() == 0)
+            {
+                cout << "in this case i was solely dependent on another cycle" << endl;
+                complete_follow_set_nonterms.insert(*it);      // add it to the completed rules set
+                it = incomplete_follow_set_nonterms.erase(it); // delete it from the sets we have yet to complete
+                some_nonterms_updated = true;
+                // and after we've checked the other rules we have yet to check on this while loop iteration, check to go see
+                // if any of the other unresolved rules were dependent on this newly-resolved rule
+            }
+            else // if our rule still has dependencies to resolve
+            {
+                /*in here we check to see if our current rule is in a cycle, and if so, whether it can be resolved yet or not*/
+
+                bool canUnionWithAll = false; // tracking if this rule can resolve all its dependencies
+
+                /*here we iterate through this loop one time less than the total number of rules yet to be resolved; this is a marker of the max potential jumps
+                there can be in a legtimiate cycle. one less than total because we start out having already resolved the rule we are currently checking by pre-loading
+                its direct (the ones in its depenency list; indirect would be the other rules in the cycle its in) dependencies in the queue*/
+                for (size_t i = 0; i < incomplete_follow_set_nonterms.size() - 1; i++)
+                {
+
+                    /*since we will be resolving dependencies one by one and putting a dependencies dependencies in the queue at the same time we are
+                    iterating through it, and since we want to delete a dependency after resolving it, we do pop_front x amount of times, where x is the
+                    starting size of our queue for each iteration of this while loop (eg one dependency resolution for each item in the queue) */
+                    string y = union_with_nonterms.front();
+                    int starting_size = union_with_nonterms.size();
+                    int counter = 0;
+                    while (counter < starting_size)
+                    {
+                        /*for each dependency in our queue at the start of the loop's iteration, iterate through each dependencies own list
+                        of dependencies and place them in the queue*/
+                        for (auto m = union_with_follow_sets[y].begin(); m != union_with_follow_sets[y].end(); m++)
+                        {
+
+                            union_with_nonterms.push_back(*m); // place this dependency from the dependency list of the dependency we are resolving into the queue
+                        }
+                        union_with_nonterms.pop_front(); // and then delete the dependency we just resolved
+                        counter++;
+                    }
+
+                    bool allStartingRule = true; // tracks if every dependency in this rule's current queue of dependencies are all just this rule itself
+                    for (size_t b = 0; b < union_with_nonterms.size(); b++)
+                    {
+                        /*if even a single dependency in the queue is not the queue itself, we can't resolve it; we either need more loop iterations to keep
+                        iterating through or this rule is not part of a cycle with this dependency */
+                        if (union_with_nonterms[b] != *it)
+                        {
+                            allStartingRule = false;
+                            break; // we can leave after finding one that doesn't match
+                        }
+                    }
+                    /*if all the dependencies are just itself, you can union with all the original dependencies in this rule's dependency list since they all end up
+                    leading to this rule itself */
+                    if (allStartingRule)
+                    {
+                        canUnionWithAll = true;
+                        break; // we stop here because resolving again will just cause us to repeat the same loop
+                    }
+                    // if evrything if the main rule we are checking, do something and break
+                }
+                if (canUnionWithAll) // if all this rule's dependencies lead to itself, union with all the dependencies
+                {
+                    for (auto union_iter = union_with_follow_sets[*it].begin(); union_iter != union_with_follow_sets[*it].end(); union_iter++)
+                    {
+
+                        for (size_t h = 0; h < follow_set[*union_iter].size(); h++)
+                        {
+
+                            if (follow_set_inserted[*it].insert(follow_set[*union_iter][h]).second)
+                            {
+
+                                follow_set[*it].push_back(follow_set[*union_iter][h]);
+                            }
+                        }
+                    }
+
+                    union_with_follow_sets[*it].erase(union_with_follow_sets[*it].begin(), union_with_follow_sets[*it].end());
+
+                    complete_follow_set_nonterms.insert(*it);
+                    it = incomplete_follow_set_nonterms.erase(it);
+                    some_nonterms_updated = true;
+                }
+                else /*if this rule has dependencies that it isn't in a cycle with, it must wait for those dependencies to resolve their cycles before it
+                can resolve those dependencies*/
+                {
+                    it++;
+                }
             }
         }
     }
