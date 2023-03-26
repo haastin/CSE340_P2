@@ -42,6 +42,9 @@ deque<string> sortListOfTerminals(deque<string>);
 deque<string> allTerminalsInOrder();
 unordered_set<string> ListOfNonterminalsThatGoToEpsilonDirectly();
 unordered_set<string> ListOfNonterminalsThatGoToEpsilon();
+unordered_set<string> setOfGeneratingRules();
+unordered_set<string> setOfReachableRules();
+unordered_set<string> unorderedListOfRemovedUselessNonterminals();
 // recursive procedures to check if the grammar for an input grammar is being followed
 
 // read grammar
@@ -251,11 +254,204 @@ pair<deque<string>, deque<string>> findOrdered_TerminalsAndNonTerminals()
     return terms_nonterms;
 }
 
-// Task 2
-void RemoveUselessSymbols()
+void printListOfRemovedUselessNonterminals()
 {
 
-    cout << "2\n";
+    unordered_set<string> unordered_nonuseless_rules = unorderedListOfRemovedUselessNonterminals();
+
+    struct rule *iterator = head;
+    while (iterator != NULL)
+    {
+
+        for (auto it = unordered_nonuseless_rules.begin(); it != unordered_nonuseless_rules.end(); it++)
+        {
+
+            if (iterator->lhs == *it)
+            {
+                bool containsAllNonuselessRules = true;
+                for (int f = 0; f < iterator->rhs.size(); f++)
+                {
+                    if (isNonterminal(iterator->rhs[f]) && unordered_nonuseless_rules.count(iterator->rhs[f]) == 0)
+                    {
+                        containsAllNonuselessRules = false;
+                        break;
+                    }
+                }
+                if (containsAllNonuselessRules)
+                {
+                    cout << *it << " -> ";
+
+                    for (int f = 0; f < iterator->rhs.size(); f++)
+                    {
+                        cout << iterator->rhs[f] << " ";
+                    }
+                    if (iterator->rhs.size() == 0)
+                    {
+                        cout << "#";
+                    }
+                    cout << endl;
+                }
+            }
+        }
+
+        iterator = iterator->next;
+    }
+}
+
+// Task 2
+unordered_set<string> unorderedListOfRemovedUselessNonterminals()
+{
+    unordered_set<string> generating_rules = setOfGeneratingRules();
+
+    unordered_set<string> reachable_rules = setOfReachableRules();
+
+    unordered_set<string> unordered_nonuseless_rules;
+
+    for (auto gen_it = generating_rules.begin(); gen_it != generating_rules.end(); gen_it++)
+    {
+        // cout << *gen_it << " ";
+        for (auto reach_it = reachable_rules.begin(); reach_it != reachable_rules.end(); reach_it++)
+        {
+            if (*gen_it == *reach_it)
+            {
+                unordered_nonuseless_rules.insert(*gen_it);
+            }
+        }
+    }
+    unordered_set<string> rules_containing_only_nonuseless_symbols;
+    string start_symbol = head->lhs;
+    deque<string> rules_to_explore;
+    rules_to_explore.push_front(start_symbol);
+
+    while (!rules_to_explore.empty())
+    {
+
+        string curr_rule = rules_to_explore.front();
+        struct rule *iterator = head;
+        while (iterator != NULL)
+        {
+            if (iterator->lhs == curr_rule)
+            {
+                bool allNonuseless = true;
+
+                for (size_t x = 0; x < iterator->rhs.size(); x++)
+                {
+
+                    if (isNonterminal(iterator->rhs[x]) && unordered_nonuseless_rules.count(iterator->rhs[x]) == 0)
+                    {
+                        allNonuseless = false;
+                        break;
+                    }
+                }
+                if (allNonuseless)
+                {
+                    rules_containing_only_nonuseless_symbols.insert(iterator->lhs);
+                    for (size_t x = 0; x < iterator->rhs.size(); x++)
+                    {
+                        if(isNonterminal(iterator->rhs[x]) && rules_containing_only_nonuseless_symbols.insert(iterator->rhs[x]).second){
+                            rules_to_explore.push_back(iterator->rhs[x]);
+                        }
+                    }
+                }
+            }
+            iterator = iterator->next;
+        }
+
+        rules_to_explore.pop_front();
+    }
+
+    return rules_containing_only_nonuseless_symbols;
+}
+
+unordered_set<string> setOfReachableRules()
+{
+
+    string start_symbol = head->lhs;
+    unordered_set<string> reachable_rules;
+
+    deque<string> rules_to_explore;
+    reachable_rules.insert(start_symbol);
+    rules_to_explore.push_front(start_symbol);
+
+    while (!rules_to_explore.empty())
+    {
+
+        string curr_rule = rules_to_explore.front();
+        struct rule *iterator = head;
+        while (iterator != NULL)
+        {
+            if (iterator->lhs == curr_rule)
+            {
+                for (size_t x = 0; x < iterator->rhs.size(); x++)
+                {
+
+                    if (isNonterminal(iterator->rhs[x]) && reachable_rules.insert(iterator->rhs[x]).second)
+                    {
+                        rules_to_explore.push_back(iterator->rhs[x]);
+                    }
+                }
+            }
+            iterator = iterator->next;
+        }
+
+        rules_to_explore.pop_front();
+    }
+
+    return reachable_rules;
+}
+
+unordered_set<string> setOfGeneratingRules()
+{
+
+    unordered_set<string> nonterms_goto_epsilon = ListOfNonterminalsThatGoToEpsilon();
+    // find generating symbols
+
+    unordered_set<string> generating_rules;
+
+    // all rules that go to epsilon are generating, so add them first
+
+    struct rule *iterator = head;
+    while (iterator != NULL)
+    {
+
+        if (nonterms_goto_epsilon.count(iterator->lhs) == 1)
+        {
+            generating_rules.insert(iterator->lhs);
+        }
+        iterator = iterator->next;
+    }
+    bool addedGeneratingRules = true;
+
+    while (addedGeneratingRules)
+    {
+        addedGeneratingRules = false;
+        struct rule *iterator = head;
+        while (iterator != NULL)
+        {
+
+            bool rhsAllGenerating = true;
+            for (size_t y = 0; y < iterator->rhs.size(); y++)
+            {
+                if (generating_rules.count(iterator->rhs[y]) == 1 || !isNonterminal(iterator->rhs[y]))
+                {
+                }
+                else
+                {
+                    rhsAllGenerating = false;
+                    break;
+                }
+            }
+            if (rhsAllGenerating)
+            {
+                if (generating_rules.insert(iterator->lhs).second)
+                    addedGeneratingRules = true;
+            }
+
+            iterator = iterator->next;
+        }
+    }
+
+    return generating_rules;
 }
 
 // Task 3
@@ -671,8 +867,9 @@ unordered_map<string, deque<string>> CalculateFollowSets()
                                 follow_set[iterator->rhs[i]].push_back(first_sets[iterator->rhs[x]][j]);
                             }
                         }
-                        
-                        if(nonterms_goto_epsilon.count(iterator->rhs[x]) != 1){
+
+                        if (nonterms_goto_epsilon.count(iterator->rhs[x]) != 1)
+                        {
                             break;
                         }
                         x++;
@@ -771,7 +968,14 @@ unordered_map<string, deque<string>> CalculateFollowSets()
 // Task 5
 void CheckIfGrammarHasPredictiveParser()
 {
-    cout << "5\n";
+    unordered_set<string> nonuseless_rules = unorderedListOfRemovedUselessNonterminals();
+
+    if(nonuseless_rules.size() == 0){
+        cout << "NO" << endl;
+    }
+    else{
+        cout << "YES" << endl;
+    }
 }
 
 int main(int argc, char *argv[])
@@ -802,7 +1006,7 @@ int main(int argc, char *argv[])
         break;
 
     case 2:
-        RemoveUselessSymbols();
+        printListOfRemovedUselessNonterminals();
         break;
 
     case 3:
