@@ -55,18 +55,6 @@ void ReadGrammar()
 
     if (validRuleList(lexer) && lexer->GetToken().token_type == HASH)
     {
-
-        // just looping through the linked list to check if i split the input correctly
-        /*struct rule *iterator = head;
-        while(iterator != NULL){
-            cout << iterator->lhs << ": ";
-            for(int i = 0; i < iterator->rhs.size(); i++){
-                cout << iterator->rhs[i] << " ";
-            }
-            cout << endl;
-
-            iterator = iterator->next;
-        }*/
     }
     else
     { // if the input grammar does not follow our required format
@@ -348,7 +336,8 @@ unordered_set<string> unorderedListOfRemovedUselessNonterminals()
                     rules_containing_only_nonuseless_symbols.insert(iterator->lhs);
                     for (size_t x = 0; x < iterator->rhs.size(); x++)
                     {
-                        if(isNonterminal(iterator->rhs[x]) && rules_containing_only_nonuseless_symbols.insert(iterator->rhs[x]).second){
+                        if (isNonterminal(iterator->rhs[x]) && rules_containing_only_nonuseless_symbols.insert(iterator->rhs[x]).second)
+                        {
                             rules_to_explore.push_back(iterator->rhs[x]);
                         }
                     }
@@ -502,7 +491,6 @@ void printFirstSets(unordered_map<string, deque<string>> first_sets)
         }
         cout << " }" << endl;
     }
-    // cout << "this: " << first_sets[nonterminals[1]].front() << endl;
 }
 
 unordered_map<string, deque<string>> CalculateFirstSets() // gonna fix order at the end cuz the order thing is fucking stupid
@@ -515,22 +503,6 @@ unordered_map<string, deque<string>> CalculateFirstSets() // gonna fix order at 
 
     unordered_map<string, deque<string>> first_sets;
     unordered_map<string, unordered_set<string>> first_sets_inserted;
-
-    /*struct rule *iterator = head;
-    while(iterator != NULL){
-        cout << "testing rule: " << iterator->lhs << endl;
-
-        if(goesToEpsilonDirectly(iterator->lhs)){
-            cout << iterator->lhs << "goes to epsilon" << endl;
-            if(first_sets_inserted[iterator->lhs].insert("#").second){
-                cout << "inserted epsilon for " << iterator->lhs << endl;
-                first_sets[iterator->lhs].push_front("#");
-            }
-        }
-
-        iterator = iterator->next;
-    }*/
-
     unordered_set<string> nonterms_goto_epsilon = ListOfNonterminalsThatGoToEpsilon();
 
     while (!rules.empty()) // can skip over the eles that already have entries in the map
@@ -542,12 +514,6 @@ unordered_map<string, deque<string>> CalculateFirstSets() // gonna fix order at 
 
         while (!update_first_sets.empty())
         {
-            // cout << "rule: " << curr_rule << " with the queue of its first set eles:";
-            /*for (int q = 0; q < update_first_sets.size(); q++)
-            {
-                cout << update_first_sets[q] << " ";
-            }
-            cout << endl;*/
             struct rule *iterator = head;
 
             // sort update_first_sets to be in order that the nonterms appear in the grammar
@@ -563,7 +529,7 @@ unordered_map<string, deque<string>> CalculateFirstSets() // gonna fix order at 
                     }
                     else
                     {
-                        // cout << "found a rule that matches first node in our queue: " << iterator->lhs << endl;
+
                         if (!isNonterminal(iterator->rhs[0]))
                         {                                                                       // if its first element is a terminal
                             if (first_sets_inserted[curr_rule].insert(iterator->rhs[0]).second) // check if we've already added it
@@ -741,13 +707,6 @@ unordered_set<string> ListOfNonterminalsThatGoToEpsilon()
 
     while (updated_queue)
     {
-        /*cout << "current queue: ";
-        for (auto p = nonterms_have_epsilon.begin(); p != nonterms_have_epsilon.end(); p++)
-        {
-            cout << *p << " ";
-        }
-        cout << endl;*/
-
         updated_queue = false;
 
         struct rule *iterator = head;
@@ -774,13 +733,6 @@ unordered_set<string> ListOfNonterminalsThatGoToEpsilon()
             iterator = iterator->next;
         }
     }
-
-    /*cout << "final queue: ";
-       for (auto p = nonterms_have_epsilon.begin(); p != nonterms_have_epsilon.end(); p++)
-       {
-           cout << *p << " ";
-       }
-       cout << endl;*/
     return nonterms_have_epsilon;
 }
 
@@ -970,12 +922,108 @@ void CheckIfGrammarHasPredictiveParser()
 {
     unordered_set<string> nonuseless_rules = unorderedListOfRemovedUselessNonterminals();
 
-    if(nonuseless_rules.size() == 0){
+    unordered_map<string, deque<string>> first_sets = CalculateFirstSets();
+    unordered_map<string, deque<string>> follow_sets = CalculateFollowSets();
+
+    unordered_set<string> nonterms_goto_epsilon = ListOfNonterminalsThatGoToEpsilon();
+
+    unordered_map<string, unordered_set<string>> already_inserted;
+
+    if (nonuseless_rules.size() == 0)
+    {
         cout << "NO" << endl;
+        return;
     }
-    else{
-        cout << "YES" << endl;
+
+    struct rule *iterator = head;
+    while (iterator != NULL)
+    {
+
+        if (iterator->rhs.size() != 0)
+        {
+            unordered_set<string> inserted_for_this_rule;
+            for (int j = 0; j < iterator->rhs.size(); j++)
+            {
+
+                if (isNonterminal(iterator->rhs[j]))
+                {
+
+                    for (int i = 0; i < first_sets[iterator->rhs[j]].size(); i++)
+                    {
+                        if (!already_inserted[iterator->lhs].insert(first_sets[iterator->rhs[j]][i]).second)
+                        {
+                            if (inserted_for_this_rule.insert(first_sets[iterator->rhs[j]][i]).second)
+                            {
+                                cout << "NO" << endl;
+                                return;
+                            }
+                        }
+                        else
+                        {
+                            inserted_for_this_rule.insert(first_sets[iterator->rhs[j]][i]);
+                        }
+                    }
+                    if (nonterms_goto_epsilon.count(iterator->rhs[j]) == 0)
+                    {
+                        break;
+                    }
+                }
+                else
+                {
+                    if (!already_inserted[iterator->lhs].insert(iterator->rhs[j]).second)
+                    {
+                        if (inserted_for_this_rule.insert(iterator->rhs[j]).second)
+                        {
+                            cout << "NO" << endl;
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        inserted_for_this_rule.insert(iterator->rhs[j]);
+                    }
+                    break;
+                }
+            }
+        }
+        else
+        {
+            if (first_sets[iterator->lhs].size() > follow_sets[iterator->lhs].size())
+            {
+                for (int i = 0; i < first_sets[iterator->lhs].size(); i++)
+                {
+                    for (int k = 0; k < follow_sets[iterator->lhs].size(); k++)
+                    {
+                        if (first_sets[iterator->lhs][i] == follow_sets[iterator->lhs][k])
+                        {
+
+                            cout << "NO" << endl;
+                            return;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                for (int i = 0; i < follow_sets[iterator->lhs].size(); i++)
+                {
+                    for (int k = 0; k < first_sets[iterator->lhs].size(); k++)
+                    {
+                        if (first_sets[iterator->lhs][k] == follow_sets[iterator->lhs][i])
+                        {
+
+                            cout << "NO" << endl;
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+        iterator = iterator->next;
     }
+
+    cout << "YES" << endl;
+    return;
 }
 
 int main(int argc, char *argv[])
